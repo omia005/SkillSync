@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import rest_framework
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     'jobs',
     'skills',
     'projects',
+    'rest_authtoken'
 ]
 
 MIDDLEWARE = [
@@ -77,14 +79,29 @@ WSGI_APPLICATION = 'skillsyncapi.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# https://docs.djangoproject.com/en/6.0/ref/settings/#database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'SkillSync_db',
+        'USER': 'postgres',
+        'PASSWORD': '0938@2022ab',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_authtoken.authentication.AuthTokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES':[
+        'rest_framework.permissions.AllowAny',
+    ]
+}
+
 
 
 # Password validation
@@ -124,3 +141,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+AUTH_USER_MODEL= 'users.User'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
