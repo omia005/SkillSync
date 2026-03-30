@@ -16,6 +16,10 @@ class User(AbstractUser):
     linkedIn = models.URLField(blank=True, null=True)
     github = models.URLField(blank=True, null=True)
     portfolio = models.URLField(blank=True, null=True)
+    username = None
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
 
     def __str__(self):
-        return self.username
+        return self.first_name

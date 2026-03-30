@@ -1,63 +1,50 @@
-import {Navigate} from "react-router-dom"
-import {jwtDecode} from "jwt-decode"
-import {ACCESS_TOKEN, REFRESH_TOKEN} from "../constants.js"
-import { useEffect, useState } from "react"
-import api from "../api/api.js"
+import {useState, useEffect} from 'react';
+import { Navigate} from 'react-router-dom';
 
+import { ACCESS_TOKEN } from 'src/constants';
 
 function ProtectedRoute({children}){
-  const [isAuthorized, setIsAuthorized] = useState(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() =>{
-     auth().catch(() => setIsAuthorized(false))
-  }, [])
 
-  const refreshToken = async() =>{
-    const refresh = localStorage.getItem(REFRESH_TOKEN)
-    
-    try{
-      const response = await api.post("/api/token/refresh/", {
-      refresh : refresh }, {withCredentials: true})
 
-     if(response.status === 200){
-       localStorage.setItem(ACCESS_TOKEN = response.data.access)
-       setIsAuthorized(True)
-     }
-     else{
-      setIsAuthorized(false)
-     }
-    }catch(error){
-      console.log(error)
-      setIsAuthorized(false)
+  const refreshToken = async () =>{
+
+   try{
+    const res = await api.post('/users/token/refresh/', {}, {withCredentials: true})
+    if(res.data.access){
+      localStorage.setItem(ACCESS_TOKEN, res.data.access)
+      setIsAuthenticated(true);
     }
-    
-
+   }catch(err){
+      setIsAuthenticated(false);
+      console.error
+   }
   }
   
-  const auth = async() =>{
-    const token = localStorage.getItem(ACCESS_TOKEN)
+  const checkAuth = async () => {
+
+    const token = localStorage.getItem(ACCESS_TOKEN);
 
     if(!token){
-      setIsAuthorized(false)
-      return
+      setIsAuthenticated(false);
+      setLoading(false);
+      return;
     }
-
-    const decode = jwtDecode(token)
-    const tokenExp = decode.exp
-    const now = Date.now()/1000
-
-    if (tokenExp > now){
-      await refreshToken()
-    }
-    else{
-      setIsAuthorized(True)
+    
+    decodedToken = jwt_decode(token);
+    now = Date.now()/1000;
+    if(decodedToken.exp < now){
+      await refreshToken();
+    }else{
+      setIsAuthenticated(true);
     }
   }
-
-  if(isAuthorized === null){
+  
+  if (isAuthorized === null){
     return <div>Loading...</div>
   }
-  return isAuthorized ? children : <Navigate to="/users/login"/>
-}
 
-export default ProtectedRoute;
+  return isAuthorized ? children : <Navigate to='/login' />
+}
