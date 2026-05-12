@@ -1,16 +1,119 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute.jsx'
+import Login from './pages/login.jsx'
+import Register from './pages/register.jsx'
+import Skills from "./pages/userskills.jsx"
+import Dashboard from "./pages/dashboard.jsx"
+import SetupProfile from './pages/setup-profile.jsx'
+import AdminDashboard from "./pages/admin-dashboard.jsx";
+import ForgotPassword from "./pages/forgotpassword.jsx"
+import ResetPassword from "./pages/resetpassword.jsx"
+import NotFound from "./pages/notfound.jsx"
+import CareerPathPage from './pages/careerpathpage.jsx'
+import CareerDetailPage from './pages/careerdetail.jsx'
+import CVBuilder from './pages/cvbuilder.jsx'
+import SkillGapAnalysis from './pages/skillgapanalysis.jsx'
+import {ToastContainer} from "react-toastify"
+import 'react-toastify/dist/ReactToastify.css';
+
+
+function Logout(){
+  localStorage.removeItem(ACCESS_TOKEN);
+  localStorage.removeItem(USER_ROLE);
+  localStorage.removeItem("user");
+  localStorage.removeItem("firstName");
+  localStorage.removeItem("lastName");
+  localStorage.removeItem("email");
+  return <Navigate to="/login" />
+}
+
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
-    <>
-      <div>SkillSync</div>
-    </>
+    
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/setup-profile"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <SetupProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/skills"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <Skills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/career-paths/"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <CareerPathPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/career-paths/:slug" 
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <CareerDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/cv-builder"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <CVBuilder />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/skill-gap-analysis"
+          element={
+            <ProtectedRoute allowedRoles={['student']}>
+              <SkillGapAnalysis />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<NotFound/>} />
+        <Route path="/logout" element={<Logout />} />
+        
+      </Routes>
+      <ToastContainer  position="top-right"
+                      autoClose={3000}
+                      hideProgressBar={false}
+                      newestOnTop
+                      closeOnClick
+                      pauseOnHover
+                      theme="colored"/>
+    </BrowserRouter>
   )
 }
 

@@ -1,5 +1,9 @@
+import Form from "../components/form.jsx";
+import {ACCESS_TOKEN} from "../constants"
+
 function Register(){
-  return <div>Register</div>
+  localStorage.removeItem(ACCESS_TOKEN)
+  return <Form route='/users/register/' method='register' />
 }
 
 export default Register;
