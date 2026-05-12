@@ -1,22 +1,37 @@
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.views import APIView
-from .models import UserSkill, Skill, CareerPath, CareerRoadmap
-from .serializers import CareerPathSerializer, UserSkillSerializer, SkillSerializer
+from rest_framework.permissions import IsAuthenticated
+from .models import UserSkill, Skill, CareerPath
+from .serializers import UserSkillSerializer, SkillSerializer, CareerPathSerializer
 
 # Create your views here.
 class SkillViewset(viewsets.ModelViewSet):
     queryset = Skill.objects.all()
     serializer_class = SkillSerializer
+    
 
 class UserSkillViewset(viewsets.ModelViewSet):
+    
     queryset = UserSkill.objects.all()
     serializer_class = UserSkillSerializer
+    permission_classes = [IsAuthenticated]
 
-class CareerPathViewset(viewsets.ModelViewSet):
-    queryset = CareerPath.objects.all()
+    def get_queryset(self):
+        return UserSkill.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class CareerPathViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = CareerPath.objects.prefetch_related(
+       "learning_path__topics",
+       "learning_path__resources"
+    )
     serializer_class = CareerPathSerializer
+    lookup_field = "slug"
 
+"""
 class SkillGapAnalysisView(APIView):
     def get(self, request, user_id, career_id):
         required_skills = CareerPath.objects.get(id=career_id).skills_required.all()
@@ -45,34 +60,5 @@ class SkillGapAnalysisView(APIView):
             "missing_skills": missing_skills,
             "readiness_score": f"{round(readiness)}%"
         })
+"""
 
-
-class CareerRoadmapRecommendation(APIView):
-
-    def get(self, request, user_id, career_id):
-
-        roadmap = CareerRoadmap.objects.filter(
-            career_id=career_id
-        ).order_by("step_order")
-
-        user_skills = UserSkill.objects.filter(user_id=user_id)
-
-        user_skill_names = [s.skill.name for s in user_skills]
-
-        steps = []
-
-        for step in roadmap:
-
-            status = "Completed" if step.skill.name in user_skill_names else "Missing"
-
-            steps.append({
-                "step": step.step_order,
-                "skill": step.skill.name,
-                "status": status,
-                "learning_resource": step.learning_resource
-            })
-
-        return Response({
-            "career": roadmap.first().career.name if roadmap else None,
-            "roadmap": steps
-        })
