@@ -4,13 +4,21 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserSerializer(serializers.ModelSerializer):
-   class Meta:
-       model =  User
-       fields = [
-           'id', 'email', 'first_name','major', 'profile_picture', 
-           'last_name', 'role', 'bio', 'linkedIn','graduationYear',
-           'github', 'portfolio', 'university', 'yearOfStudy'
-           ]
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'role', 'bio',
+            'linkedIn', 'graduationYear', 'github', 'portfolio',
+            'university', 'major', 'yearOfStudy', 'profile_picture',
+            'is_profile_complete', 'selected_career',
+        ]
+
+
+class AdminStudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'date_joined', 'is_profile_complete']
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,7 +27,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'id', 'first_name', 'last_name', 'email', 'password',
         ]
         extra_kwargs = {'password': {'write_only': True}}
-    
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         validated_data['role'] = 'student'
@@ -31,5 +39,3 @@ class UserCreateSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
-    
-    

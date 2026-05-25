@@ -1,13 +1,25 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 
-# Create your models here.
+class CustomUserManager(UserManager):
+    def create_superuser(self, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('role', 'admin')
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self._create_user(email, email, password, **extra_fields)
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('student', 'Student'),
         ('admin', 'Admin')
     )
-    
+
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
     email = models.EmailField(unique=True)
@@ -25,18 +37,12 @@ class User(AbstractUser):
     username = None
     is_profile_complete = models.BooleanField(default=False)
     is_first_login = models.BooleanField(default=True)
+    selected_career = models.CharField(max_length=100, blank=True, null=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
-
-    def create_superuser(self, email, password=None, **extra_fields):
-      extra_fields.setdefault('is_staff', True)
-      extra_fields.setdefault('is_superuser', True)
-
-       # Note: 'username' is removed from the arguments if it's not in your model
-      return self.create_user(email, password, **extra_fields)
-
+    objects = CustomUserManager()
 
     def __str__(self):
         return self.first_name

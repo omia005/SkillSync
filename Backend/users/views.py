@@ -2,9 +2,10 @@ from rest_framework import views
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .models import User
-from .serializers import UserSerializer, UserCreateSerializer
+from .serializers import UserSerializer, UserCreateSerializer, AdminStudentSerializer
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsAdminUserRole
@@ -17,6 +18,8 @@ from rest_framework.decorators import api_view
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.db import models
+
 
 
 # Create your views here.
@@ -28,14 +31,21 @@ class RegisterView(views.APIView):
 
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data)
-        
+
         if serializer.is_valid():
             user = serializer.save()
 
-            refresh = RefreshToken.for_user(user)  # ✅ FIXED
+            refresh = RefreshToken.for_user(user)
+
+            # Inject role and user_id into both tokens
+            refresh['user_id'] = user.id
+            refresh['role']    = user.role
+            access = refresh.access_token
+            access['user_id']  = user.id
+            access['role']     = user.role
 
             response = Response({
-                "access": str(refresh.access_token),
+                "access":  str(access),
                 "refresh" : str(refresh),
                 "id": user.id,
                 "email": user.email,
@@ -49,11 +59,11 @@ class RegisterView(views.APIView):
             return response
 
         return Response(serializer.errors, status=400)
-    
+
     def validate_password(self, request):
         validate_password(request.data["password"])
         return request.data
-        
+
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):
@@ -61,13 +71,25 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.user  # ✅ THIS is the authenticated user
-        
+
         if user.is_first_login:
             user.is_first_login = False
             user.save()
 
-        access = serializer.validated_data.get("access")
-        refresh = serializer.validated_data.get("refresh")
+        tokens = serializer.validated_data
+        refresh = tokens.get("refresh")
+        access = tokens.get("access")
+
+        # Inject role and user_id into the tokens themselves
+        refresh_obj = RefreshToken(refresh)
+        refresh_obj['user_id'] = user.id
+        refresh_obj['role']    = user.role
+        refresh = str(refresh_obj)
+
+        access_obj = AccessToken(access)
+        access_obj['user_id'] = user.id
+        access_obj['role']    = user.role
+        access = str(access_obj)
 
         res = Response({
             "id": user.id,
@@ -75,24 +97,28 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             "first_name": user.first_name,
             "last_name": user.last_name,
             "access": access,
+            "refresh": refresh,
             "role": user.role,
             'is_first_login': user.is_first_login,
             'is_profile_complete': user.is_profile_complete
         })
 
+        # In DEBUG (localhost / HTTP) Secure cookies are not sent by browsers
+        # that do not support the localhost-exception; disable Secure in dev so
+        # the refresh endpoint can successfully read the cookie.
         res.set_cookie(
             key="refresh_token",
             value=refresh,
             httponly=True,
-            secure=True,
-            samesite="Strict",
+            secure=not settings.DEBUG,   # False in dev, True in production
+            samesite="Lax",              # Lax: cookie is still sent on cross-site POSTs (5173→8000) in dev
             path="/api/",
         )
 
         return res
-        
+
 class CustomRefreshView(TokenRefreshView):
-   
+
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
 
@@ -104,14 +130,47 @@ class CustomRefreshView(TokenRefreshView):
 
         request.data["refresh"] = refresh_token
 
-        return super().post(request, *args, **kwargs)
-    
+        response = super().post(request, *args, **kwargs)
+
+        # Inject role and user_id into the new access token payload
+        try:
+            refresh = RefreshToken(request.data["refresh"])
+            user_id = refresh.payload.get("user_id")
+            user  = User.objects.get(id=user_id)
+
+            new_access = AccessToken(response.data["access"])
+            new_access['user_id'] = user.id
+            new_access['role']    = user.role
+            response.data["access"] = str(new_access)
+            response.data["role"]   = user.role
+        except Exception:
+            pass
+
+        return response
+
 
 class LogoutView(views.APIView):
     def post(self, request):
         response = Response({"message":"Logged Out"})
         response.delete_cookie("refresh_token")
         return response
+
+
+class SelectCareerView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        slug = request.data.get("slug")
+        
+        if slug:
+            user.selected_career = slug
+            user.save()
+            return Response({"message": "Career selected", "slug": slug})
+        else:
+            user.selected_career = None
+            user.save()
+            return Response({"message": "Career deselected"})
 
 
 class UserProfileView(views.APIView):
@@ -131,7 +190,8 @@ class UserProfileView(views.APIView):
             user.first_name = request.data.get("firstName")
             user.last_name = request.data.get("lastName")
             user.profilePicture = request.data.get("profilePicture")
-        
+            user.selected_career = request.data.get("selected_career", user.selected_career)
+
             is_profile_complete = all([
                 user.bio,
                 user.linkedIn,
@@ -148,20 +208,65 @@ class UserProfileView(views.APIView):
             user.is_profile_complete = is_profile_complete
             user.save()
             return Response({"message": "Profile updated successfully"})
-        
+
         except User.DoesNotExist:
             return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-   
+
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class AdminDashboardView(views.APIView):
-     permission_classes = [IsAdminUserRole, IsAuthenticated]
+      permission_classes = [IsAdminUserRole, IsAuthenticated]
 
 
-     def get(self, request):
-        return Response({"message": "Welcome Admin!"})
+      def get(self, request):
+          return Response({"message": "Welcome Admin!"})
+
+
+class AdminStudentListView(views.APIView):
+    permission_classes = [IsAdminUserRole, IsAuthenticated]
+
+    def get(self, request):
+        search = request.GET.get('search', '')
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+        
+        queryset = User.objects.filter(role='student').order_by('-date_joined')
+        
+        if search:
+            queryset = queryset.filter(
+                models.Q(first_name__icontains=search) |
+                models.Q(last_name__icontains=search) |
+                models.Q(email__icontains=search)
+            )
+        
+        total_count = queryset.count()
+        start = (page - 1) * page_size
+        end = start + page_size
+        students = queryset[start:end]
+        
+        serializer = AdminStudentSerializer(students, many=True)
+        
+        return Response({
+            'students': serializer.data,
+            'total': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size
+        })
+
+
+class AdminStudentDetailView(views.APIView):
+    permission_classes = [IsAdminUserRole, IsAuthenticated]
+
+    def get(self, request, student_id):
+        try:
+            student = User.objects.get(id=student_id, role='student')
+            serializer = UserSerializer(student)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response({'detail': 'Student not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def forgot_password(request):
@@ -212,7 +317,7 @@ def reset_password(request, uidb64, token):
             {"message": "Token is invalid or expired"},
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
     if len(password) < 8:
         return Response(
            {"message": "Password must be at least 8 characters"},
