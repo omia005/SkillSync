@@ -6,6 +6,9 @@ import Skills from "./pages/userskills.jsx"
 import Dashboard from "./pages/dashboard.jsx"
 import SetupProfile from './pages/setup-profile.jsx'
 import AdminDashboard from "./pages/admin-dashboard.jsx";
+import AdminCareerPaths from "./pages/admin-careerpaths.jsx";
+import AdminSkills from "./pages/admin-skills.jsx";
+import AdminStudents from "./pages/admin-students.jsx";
 import ForgotPassword from "./pages/forgotpassword.jsx"
 import ResetPassword from "./pages/resetpassword.jsx"
 import NotFound from "./pages/notfound.jsx"
@@ -13,31 +16,30 @@ import CareerPathPage from './pages/careerpathpage.jsx'
 import CareerDetailPage from './pages/careerdetail.jsx'
 import CVBuilder from './pages/cvbuilder.jsx'
 import SkillGapAnalysis from './pages/skillgapanalysis.jsx'
+import { ACCESS_TOKEN, USER_ROLE } from './constants'
 import {ToastContainer} from "react-toastify"
 import 'react-toastify/dist/ReactToastify.css';
 
 
+
 function Logout(){
-  localStorage.removeItem(ACCESS_TOKEN);
-  localStorage.removeItem(USER_ROLE);
-  localStorage.removeItem("user");
-  localStorage.removeItem("firstName");
-  localStorage.removeItem("lastName");
-  localStorage.removeItem("email");
-  return <Navigate to="/login" />
-}
+   sessionStorage.clear();
+   return <Navigate to="/login" />
+  }
 
 
 function App() {
 
   return (
-    
+
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
+
+        {/* Student Routes */}
         <Route
           path="/dashboard"
           element={
@@ -51,14 +53,6 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <SetupProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin-dashboard"
-          element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
             </ProtectedRoute>
           }
         />
@@ -79,7 +73,7 @@ function App() {
           }
         />
         <Route
-          path="/career-paths/:slug" 
+          path="/career-paths/:slug"
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <CareerDetailPage />
@@ -87,7 +81,7 @@ function App() {
           }
         />
         <Route
-          path="/cv-builder"
+          path="/generate-cv"
           element={
             <ProtectedRoute allowedRoles={['student']}>
               <CVBuilder />
@@ -102,9 +96,43 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-career-paths"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminCareerPaths />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-skills"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminSkills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-students"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminStudents />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<NotFound/>} />
         <Route path="/logout" element={<Logout />} />
-        
       </Routes>
       <ToastContainer  position="top-right"
                       autoClose={3000}

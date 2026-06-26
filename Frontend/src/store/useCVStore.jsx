@@ -18,22 +18,16 @@ export const useCVStore = create((set) => ({
       },
     })),
 
-  addEducation: () =>
-    set((state) => ({
-      cv: {
-        ...state.cv,
-        education: [
-          ...state.cv.education,
-          {
-            school: "",
-            degree: "",
-            field: "",
-            start_date: "",
-            end_date: "",
-          },
-        ],
-      },
-    })),
+addEducation: (newEdu) =>
+     set((state) => ({
+       cv: {
+         ...state.cv,
+         education: [
+           ...state.cv.education,
+           newEdu,
+         ],
+       },
+     })),
 
   updateEducation: (index, field, value) =>
     set((state) => {
@@ -48,22 +42,16 @@ export const useCVStore = create((set) => ({
       };
     }),
 
-  addExperience: () =>
-    set((state) => ({
-      cv: {
-        ...state.cv,
-        experience: [
-          ...state.cv.experience,
-          {
-            company: "",
-            role: "",
-            start_date: "",
-            end_date: "",
-            description: "",
-          },
-        ],
-      },
-    })),
+addExperience: (newExp) =>
+     set((state) => ({
+       cv: {
+         ...state.cv,
+         experience: [
+           ...state.cv.experience,
+           newExp,
+         ],
+       },
+     })),
 
   updateExperience: (index, field, value) =>
     set((state) => {

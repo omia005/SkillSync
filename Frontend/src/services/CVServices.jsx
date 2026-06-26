@@ -10,12 +10,8 @@ export const fetchCV = async (id) => {
   return res.data;
 };
 
-export const updateCV = async (id, data) => {
-  const res = await api.put(`/cv/${id}/`, data);
-  return res.data;
-};
-
-export const deleteCV = async (id) => {
-  const res = await api.delete(`/cv/${id}/`);
+// Use the custom PATCH endpoint that handles all nested fields
+export const updateCVFields = async (id, data) => {
+  const res = await api.patch(`/cv/${id}/update-fields/`, data);
   return res.data;
 };
